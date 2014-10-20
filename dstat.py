@@ -166,32 +166,36 @@ for arg, data in args:
         help()
 
 
-# Main loop
-while True:
-    cpu_perc = round(cpu_avg(psutil.cpu_percent(None, True)), 1)
-    mem_perc = psutil.phymem_usage()[3]
+def main():
+	while True:
+	    cpu_perc = round(cpu_avg(psutil.cpu_percent(None, True)), 1)
+	    mem_perc = psutil.phymem_usage()[3]
+	
+	    cpu_bar = mk_prog_bar(cpu_perc)
+	    mem_bar = mk_prog_bar(mem_perc)
+	
+	    volume = get_volume()
+	
+	    stats = "Volume: " + str(volume) + " "
+	    stats += "CPU " + str(cpu_perc) + cpu_bar + " "
+	    stats += "MEM " + str(mem_perc) + mem_bar
+	  
+	    if status_msg_bool:
+	        stats = status_msg
+	        time.sleep(msg_ghost_time)
+	
+	    if stdout == True:
+	        print(stats)
+	        sys.exit(0)
+	
+	    else:
+	        ret = os.system("xsetroot -name '" + stats + "'")
+	        if ret > 0:
+	            print("ERROR: Binary 'xsetroot' is not installed.")
+	            sys.exit(255)
+	
+	    time.sleep(update_invl)
 
-    cpu_bar = mk_prog_bar(cpu_perc)
-    mem_bar = mk_prog_bar(mem_perc)
 
-    volume = get_volume()
-
-    stats = "Volume: " + str(volume) + " "
-    stats += "CPU " + str(cpu_perc) + cpu_bar + " "
-    stats += "MEM " + str(mem_perc) + mem_bar
-  
-    if status_msg_bool:
-        stats = status_msg
-        time.sleep(msg_ghost_time)
-
-    if stdout == True:
-        print(stats)
-        sys.exit(0)
-
-    else:
-        ret = os.system("xsetroot -name '" + stats + "'")
-        if ret > 0:
-            print("ERROR: Binary 'xsetroot' is not installed.")
-            sys.exit(255)
-
-    time.sleep(update_invl)
+if __name__ == "__main__":
+    main()
