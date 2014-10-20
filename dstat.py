@@ -10,12 +10,14 @@
 # - Add a feature to display if sleep is on. Support began 10/20/2014.
 # - A function to display lock status, only when active.
 # - bitmap support (dependant upon support of the WM).
+# - Incorporate better return status for help()
 ########################################################
 
 
 import os
 import sys
 import time
+import getopt
 import psutil
 import subprocess
 
@@ -85,18 +87,21 @@ def get_volume():
 
 
 def help(msg=None):
+    ret = 0
+
     if msg != None:
+        ret = 1
         print msg
         print
 
-    print sys.argv[0] + " [data]- A simple statusbar generator for dwm."
-    print """    -h,--help     - Print help and exit.
-    -n,--no-color - Do not include ANSI colors with the output.
-    -s,--stdout   - Print the bars to stdout and exit.
-    -m,--message  - Print a message in the status bar for N seconds. (Defaults to 4 Seconds)
-    -i,--idle     - Define how long the specified message should idle before disappearing."""
+    print sys.argv[0] + " [OPTION] [data] - A simple statusbar generator for dwm."
+    print """    -h,--help        - Print help and exit.
+    -n,--no-color        - Do not include ANSI colors with the output.
+    -s,--stdout          - Print the bars to stdout and exit.
+    -m,--message=STRING  - Print a message in the status bar for N seconds. (Defaults to 4 Seconds)
+    -i,--idle=NUM        - Define how long the specified message should idle before disappearing."""
     
-    sys.exit(1)
+    sys.exit(ret)
 
 
 def mk_prog_bar(perc_val):
@@ -130,46 +135,36 @@ def sleep_enabled():
         return True
 
 
-# Deal with our command line arguments
-arg_stp = 1
-for arg in sys.argv[1:]:
-    if arg == "-h" or arg == "--help":
+# Process our command line arguments
+try:
+    args, argv = getopt.getopt(sys.argv[1:], "hnsm:i:", ["help", "no-color", "stdout", "message=", "idle="])
+except getopt.GetoptError:
+    help("ERROR: Invalid argument supplied.")
+    sys.exit(1)
+
+for arg, data in args:
+    if arg in ("-h", "--help"):
         help()
 
-    elif arg == "-n" or arg == "--no-color":
-        print("ERROR: No color, or code")
+    elif arg in ("-n", "--no-color"):
+        print("ERROR: No color, or code.")  
 
-    elif arg == "-s" or arg == "--stdout":
-        stdout = True 
+    elif arg in ("-s", "--stdout"):
+        stdout = True
 
-    # Deal with the arguments that require values
-    elif arg == "-m" or arg == "--message" or \
-         arg == "-i" or arg == "--idle":
+    elif arg in ("-m", "--message"):
+        status_msg_bool = True
+        status_msg = data
 
+    elif arg in ("-i", "--idle"):
         try:
-            sys.argv[arg_stp + 1]
-        except IndexError:
-            help("ERROR: You did not provide enough data for the specified argument.")    
-            sys.exit(1)
-    
-        # Deal with our arguments requiring extra data
-        if arg == "-m" or arg == "--message":
-            status_msg_bool = True
-            status_msg = str(sys.argv[arg_stp + 1])
+            msg_ghost_time = int(data)
+        except ValueError:
+            help("ERROR: The ", arg, " argument expects and integar as a value. Char provided.")
 
-        elif arg == "-i" or arg == "--idle":
-           # Make this cleaner?
-            try:
-                msg_ghost_time = sys.argv[arg_step + 1]
-            except IndexError:
-                print("ERROR: Provided criteria must be an integar. String provided.")
-                sys.exit(1)
-        
     else:
         help()
-    
-    arg_stp += 1
-   
+
 
 # Main loop
 while True:
@@ -186,7 +181,7 @@ while True:
     stats += "MEM " + str(mem_perc) + mem_bar
   
     if status_msg_bool:
-        print(status_msg)
+        stats = status_msg
         time.sleep(msg_ghost_time)
 
     if stdout == True:
