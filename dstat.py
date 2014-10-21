@@ -11,6 +11,7 @@
 # - A function to display lock status, only when active.
 # - bitmap support (dependant upon support of the WM).
 # - Incorporate better return status for help()
+# - Add code to ensure only one "daemon" is running at any given time.
 ########################################################
 
 
@@ -22,23 +23,24 @@ import psutil
 import subprocess
 
 
-## Settings
 # Volume Info Display (Percentage or dB)
 vol_perc = True
 snd_dev_ident = 'Headphone'
 
-# System defaults #
-# Default idle time of messages passed through -m
+## Defaults
 msg_ghost_time = 6
+stdout = False
+update_invl = 1
+status_msg_bool = False
+bar_width = 12
+
 sleepd_ctl_file='/var/run/sleepd.ctl'
 
-# Internal mechanisms #
-status_msg_bool = False
 
-# Character width of progress bars
-bar_width = 12
-update_invl = 1
-stdout = False
+
+
+def cleanup():
+    None
 
 
 def cpu_avg(cpu_loads):
@@ -104,68 +106,6 @@ def help(msg=None):
     sys.exit(ret)
 
 
-def mk_prog_bar(perc_val):
-    bar_str = ""
-    delim = 100.0 / bar_width
-    stp_cnt = 0
-
-    for i in range(0, bar_width):
-        if stp_cnt <  perc_val and perc_val != 0:
-            bar_str += "|"
-        else:
-            bar_str += " "
-
-        stp_cnt += delim
-
-    bar_str = "[" + bar_str + "]"
-    return bar_str
-
-
-def sleep_enabled():
-    # Ensure that sleepd has a ctl file
-    try:
-        os.stat(sleepd_ctl_file)
-    except OSError:
-        print("ERROR: Sleepd does not exist. Is sleepd installed?\nNOTICE: Sleepd support disabled.")
-
-    sleepd_fd = open(sleep_ctl_file, 4)
-    if data[0:1] == 1:
-        return False
-    else :
-        return True
-
-
-# Process our command line arguments
-try:
-    args, argv = getopt.getopt(sys.argv[1:], "hnsm:i:", ["help", "no-color", "stdout", "message=", "idle="])
-except getopt.GetoptError:
-    help("ERROR: Invalid argument supplied.")
-    sys.exit(1)
-
-for arg, data in args:
-    if arg in ("-h", "--help"):
-        help()
-
-    elif arg in ("-n", "--no-color"):
-        print("ERROR: No color, or code.")  
-
-    elif arg in ("-s", "--stdout"):
-        stdout = True
-
-    elif arg in ("-m", "--message"):
-        status_msg_bool = True
-        status_msg = data
-
-    elif arg in ("-i", "--idle"):
-        try:
-            msg_ghost_time = int(data)
-        except ValueError:
-            help("ERROR: The ", arg, " argument expects and integar as a value. Char provided.")
-
-    else:
-        help()
-
-
 def main():
 	while True:
 	    cpu_perc = round(cpu_avg(psutil.cpu_percent(None, True)), 1)
@@ -197,5 +137,73 @@ def main():
 	    time.sleep(update_invl)
 
 
+def mk_prog_bar(perc_val):
+    bar_str = ""
+    delim = 100.0 / bar_width
+    stp_cnt = 0
+
+    for i in range(0, bar_width):
+        if stp_cnt <  perc_val and perc_val != 0:
+            bar_str += "|"
+        else:
+            bar_str += " "
+
+        stp_cnt += delim
+
+    bar_str = "[" + bar_str + "]"
+    return bar_str
+
+
+def setup():
+    None
+
+
+def sleep_enabled():
+    # Ensure that sleepd has a ctl file
+    try:
+        os.stat(sleepd_ctl_file)
+    except OSError:
+        print("ERROR: Sleepd does not exist. Is sleepd installed?\nNOTICE: Sleepd support disabled.")
+
+    sleepd_fd = open(sleep_ctl_file, 4)
+    if data[0:1] == 1:
+        return False
+    else :
+        return True
+
+
 if __name__ == "__main__":
+	# Process our command line arguments
+	try:
+	    args, argv = getopt.getopt(sys.argv[1:], "hnsm:i:", ["help", "no-color", "stdout", "message=", "idle="])
+	except getopt.GetoptError:
+	    help("ERROR: Invalid argument supplied.")
+	    sys.exit(1)
+	
+	for arg, data in args:
+	    if arg in ("-h", "--help"):
+	        help()
+	
+	    elif arg in ("-n", "--no-color"):
+	        print("ERROR: No color, or code.")  
+	
+	    elif arg in ("-s", "--stdout"):
+	        stdout = True
+	
+	    elif arg in ("-m", "--message"):
+	        status_msg_bool = True
+	        status_msg = data
+	
+	    elif arg in ("-i", "--idle"):
+	        try:
+	            msg_ghost_time = int(data)
+	        except ValueError:
+	            help("ERROR: The ", arg, " argument expects and integar as a value. Char provided.")
+	
+	    else:
+	        help()
+
+
+    setup()
     main()
+    cleanup()
