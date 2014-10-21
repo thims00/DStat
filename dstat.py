@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ########################################################
-# Dstat - A simple statusbar for DWM
+# Dstat - A simple statusbar for dwm.
 # Ver: 0.4
 # Author: Tomm Smith (root DOT packet AT gmail DOT come)
 # Date: 7/20/2014
@@ -12,6 +12,9 @@
 # - bitmap support (dependant upon support of the WM).
 # - Incorporate better return status for help()
 # - Add code to ensure only one "daemon" is running at any given time.
+# - Add code to force cleanup of the environment for stale /var/run/ files.
+# - Incorporate better error handling and all around better file initiation of
+#   FIFO file and pid file.
 ########################################################
 
 
@@ -34,9 +37,10 @@ update_invl = 1
 status_msg_bool = False
 bar_width = 12
 
+basename=sys.argv[0:-3]
 sleepd_ctl_file='/var/run/sleepd.ctl'
-
-
+run_file='/var/run/', basename, '.pid'
+sock_file='/var/run/', basename
 
 
 def cleanup():
@@ -155,8 +159,27 @@ def mk_prog_bar(perc_val):
 
 
 def setup():
-    None
+    # Setup our PID file
+    try:
+        os.stat(run_file)
+    except OSError:
+        print("ERROR: Instance of ", basename, " is already running."
+        print("  Was it closed cleanly?")
+        print("  See: \"ps aux | grep ", basename, ".py\"")
+        sys.exit(1)
 
+    pid = os.getpid()
+    # Create our PID file r/w, and truncate the data because we already
+    # check the environment for another running process
+    fd = os.open(run_file, os.O_RDWR | os.O_CREAT | os.O_TRUNC, 0660)
+    os.write(fd, str(pid, "\n"))
+    os.close(fd)
+
+    try:
+        os.stat(sock_file)
+    except
+
+    
 
 def sleep_enabled():
     # Ensure that sleepd has a ctl file
