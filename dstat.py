@@ -5,21 +5,22 @@
 # Ver: 0.4
 # Author: Tomm Smith (root DOT packet AT gmail DOT come)
 # Date: 7/20/2014
-#
-# TODO:
-# - Add a feature to display if sleep is on. Support began 10/20/2014.
-# - A function to display lock status, only when active.
-# - bitmap support (dependant upon support of the WM).
-# - Incorporate better return status for help()
-# - Add code to ensure only one "daemon" is running at any given time.
-# - Add code to force cleanup of the environment for stale /var/run/ files.
-# - Incorporate better error handling and all around better file initiation of
-#   FIFO file and pid file.
-# - Clean up setup() and possibly rearrange.
-#   \- Specifically fix the try-except issue of a file not existing, but the
-#   directory doesn't have write permissions. Do so for both try-excepts.
-# - Move the /var/run files into a single directory in /var/run?
 ########################################################
+#
+# IPC Protocol Definition And Notes
+# ---------------------------------
+# The IPC protocol is fairly simple, it comprises of two commands
+# and 3 fields. 
+#
+# COMMANDS:
+#           MSG - Display the specified message in the <DATA> field.
+#           DIE - The kill signal for the "daemon".
+#
+# FIELDS: <COMMAND>:<DELAY>:<DATA>
+#           char COMMAND - One of the above listed commands.
+#           int  DELAY   - The time period to show a message for before 
+#                          returning to main data.
+#           char DATA    - The information that corresponds to the command.
 
 
 import os
@@ -27,8 +28,10 @@ import sys
 import time
 import stat
 import getopt
+import base64
 import psutil
 import subprocess
+import select
 
 
 # Volume Info Display (Percentage or dB)
@@ -39,7 +42,6 @@ snd_dev_ident = 'Headphone'
 msg_ghost_time = 6
 stdout = False
 update_invl = 1
-status_msg_bool = False
 bar_width = 12
 
 # Strip ./, and .py from our basename
@@ -52,6 +54,11 @@ else:
 sleepd_ctl_file='/var/run/sleepd.ctl'
 run_file='/tmp/%s.pid' % basename
 sock_file='/tmp/%s' % basename
+
+# Internal control
+client = False
+die = False
+status_msg_bool = False
 
 
 def cleanup():
@@ -141,35 +148,59 @@ def help(msg=None):
     sys.exit(ret)
 
 
-def main():
-    while True:
-        cpu_perc = round(cpu_avg(psutil.cpu_percent(None, True)), 1)
-        mem_perc = psutil.phymem_usage()[3]
+def get_byte(fd):
+    """ get_byte(fd)
+
+    A function to receive a "byte" from the listening port, process it, and 
+    return the received data.
+
+    @arg object fd - A file descriptor to use for obtaining the information.
+
+    Return: Upon success, a dictionary of the data as expressed below:
+        dict = {'COMMAND' : value, 'DELAY' : value, 'DATA' : value}
+
+        Otherwise, False.
+    """
+    try:
+        encdd_data = os.read(fd, 1024)
+    except OSError as err:
+        print("WARNING: [Errno %d] %s" % (err.errno, err.strerror))
+        return False
     
-        cpu_bar = mk_prog_bar(cpu_perc)
-        mem_bar = mk_prog_bar(mem_perc)
+    try:
+        data = base64.b16decode(encdd_data)
+    except TypeError as err:
+        print("WARNING: [Errno %d] %s" % (err.errno, err.strerror))
+        return False
+
+    expl = data.split(':')
+    data = {'COMMAND' : expl[0], 
+            'DELAY'   : expl[1],
+            'DATA'    : expl[2]}
+
+    return data
+
+
+def send_byte(fd, data):
+    """ send_byte(fd, data)
+
+    Send data specified in "data" to file pointed to by fd. The variable "data"
+    should be a tuple indexed by the protocol defined in the header 
+    documentation. This function will include the base 16 encoding before 
+    sending the data.
+
+    Return: True upon success, false upon failure.
+    """
+    str = "%s:%s:%s" % (data['COMMAND'], data['DELAY'], data['DATA'])
+    encdd_str = base64.b16encode(str)
     
-        volume = get_volume()
-    
-        stats = "Volume: " + str(volume) + " "
-        stats += "CPU " + str(cpu_perc) + cpu_bar + " "
-        stats += "MEM " + str(mem_perc) + mem_bar
-      
-        if status_msg_bool:
-            stats = status_msg
-            time.sleep(msg_ghost_time)
-    
-        if stdout == True:
-            print(stats)
-            sys.exit(0)
-    
-        else:
-            ret = os.system("xsetroot -name '" + stats + "'")
-            if ret > 0:
-                print("ERROR: Binary 'xsetroot' is not installed.")
-                sys.exit(255)
-    
-        time.sleep(update_invl)
+    try:
+        os.send(fd, encdd_str)
+    except OSError as err:
+        print("ERROR: [Errno %d] %s" % (err.errno, err.strerror))
+        return False
+
+    return True
 
 
 def mk_prog_bar(perc_val):
@@ -189,28 +220,65 @@ def mk_prog_bar(perc_val):
     return bar_str
 
 
-def setup():
-    # Setup our PID file
-    try:
-        os.stat(run_file)
-        
-    except OSError as err: # run_file creation and errors
-        if err.errno == 2: # File doesn't exist
-            pid = os.getpid()
-            fd = os.open(run_file, os.O_CREAT | os.O_RDWR)
-            os.write(fd, "%d\n" % pid)
-            os.close(fd)
-            
-        else:
-            print("OSError: [Errno %d] %s: %s" % \
-                    (err.errno, err.strerror, run_file)) 
-            sys.exit(1)
+def poll_fifo(fd):
+    """ poll_fifo(fd)
 
-    else: # run_file exists
-        print("ERROR: Instance of %s is already running." % basename)
-        print("  Was it closed cleanly?")
-        print("  See: \"ps aux | grep  %s.py\" Also: %s" % (basename, run_file))
-        sys.exit(1)
+    Poll our FIFO descriptor for information and deal with the action 
+    appropriately. 
+
+    Arguments:
+
+    Return: Data string upon success, False upon failure.
+    """
+    try:
+        data = os.read(fd, 1024)
+
+    except OSError as err:
+        print("OSError: [%d]: %s" % (err.errno, err.strerror))
+        return False
+
+    else:
+        if len(data) == 0:
+            return False
+        else:
+            return data
+
+
+def setup(sock_file, server_bool=True):
+    """ setup(sock_file, server_bool=True) 
+    
+    Setup the operating environment and ensure that all expected properties 
+    of the environment are established properly and accessible. 
+
+    Arguments: @arg str  sock_file - The location of the FIFO file.
+               @arg bool server_bool - Is this a server environment?
+
+    Return: A file descriptor to the active FIFO upon success.
+            If this script returns, all is well. All issues raised
+            will sys.exit() internally.
+    """
+    # Setup our PID file
+    if server_bool:
+        try:
+           os.stat(run_file)
+            
+        except OSError as err: # run_file creation and errors
+            if err.errno == 2: # File doesn't exist
+                pid = os.getpid()
+                fd = os.open(run_file, os.O_CREAT | os.O_RDWR)
+                os.write(fd, "%d\n" % pid)
+                os.close(fd)
+                
+            else:
+                print("OSError: [Errno %d] %s: %s" % \
+                        (err.errno, err.strerror, run_file)) 
+                sys.exit(1)
+    
+        else: # run_file exists
+            print("ERROR: Instance of %s is already running." % basename)
+            print("  Was it closed cleanly?")
+            print("  See: \"ps aux | grep  %s.py\" Also: %s" % (basename, run_file))
+            sys.exit(1)
 
 
     # Ensure our FIFO file exists
@@ -233,8 +301,16 @@ def setup():
             os.unlink(sock_file)
             os.mkfifo(sock_file)
 
-    return 0 
-    
+    # Open our FIFO for polling
+    try:
+        fifo = os.open(sock_file, os.O_RDWR | os.O_NONBLOCK)
+    except OSError as err:
+        print("OSError: [Errno %d] %s" % (os.errno, os.strerror))
+        cleanup()
+        sys.exit(1)
+
+    return fifo
+                                                
 
 def sleep_enabled():
     # Ensure that sleepd has a ctl file
@@ -251,13 +327,38 @@ def sleep_enabled():
         return True
 
 
+def statusbar_str():
+    """ bld_stsbar()
+
+    The primary function that ties the business logic together.
+
+    Return: A formatted str of the statusbar information 
+    """
+    cpu_perc = round(cpu_avg(psutil.cpu_percent(None, True)), 1)
+    mem_perc = psutil.phymem_usage()[3]
+    
+    cpu_bar = mk_prog_bar(cpu_perc)
+    mem_bar = mk_prog_bar(mem_perc)
+    
+    volume = get_volume()
+    
+    sbar_str = "Volume: " + str(volume) + " "
+    sbar_str += "CPU " + str(cpu_perc) + cpu_bar + " "
+    sbar_str += "MEM " + str(mem_perc) + mem_bar
+  
+    return sbar_str
+
+
+
+
+# Main loop
 if __name__ == "__main__":
     # Process our command line arguments
     try:
-        args, argv = getopt.getopt(sys.argv[1:], "hnsm:i:", \
+        args, argv = getopt.getopt(sys.argv[1:], "hnsm:id:", \
                                     ["help", "no-color",    \
                                     "stdout", "message=",   \
-                                    "idle="])
+                                    "idle=", "die"])
     except getopt.GetoptError:
         help("ERROR: Invalid argument supplied.")
         sys.exit(1)
@@ -273,21 +374,70 @@ if __name__ == "__main__":
             stdout = True
     
         elif arg in ("-m", "--message"):
-            status_msg_bool = True
+            client = True
             status_msg = data
     
         elif arg in ("-i", "--idle"):
+            client = True
             try:
                 msg_ghost_time = int(data)
             except ValueError:
-                help("ERROR: The %s argument expects an integar as a value. \
-                    Char provided." % str(arg))
+                help("ERROR: The -h flag expects an integar as a value. \
+                        Char provided.")
+                sys.exit(1)
 
-        
+        elif arg in ("-d", "--die"):
+            client = True
+            die = True
+
         else:
             help()
+
+
+    ## main loop
+    # Handle the client requests
+    if client:
+        sock = setup(sock_file, False)
+
+    # Main server loop
+    else:
+        sock = setup(sock_file)
+
+        rlist = []
+        wlist = []
+        xlist = []
+
+        while True: 
+            rlist, wlist, xlist = select.select([sock], [], [], 0.1)
             
-    
-    setup()
-    main()
-    cleanup()
+            if rlist:
+                pkt = get_data(rlist[0])
+
+                # Process our command received
+                if pkt['COMMAND'] == 'MSG':
+                    try:
+                       int(pkt['DELAY'])
+                    except:
+                        None
+                    else:
+                        msg_ghost_time = pkt['DELAY']
+        
+                    os.system("xsetroot -name '%s'" % pkt['DATA'])
+                    time.sleep(msg_ghost_time)
+                    continue
+
+                elif pkt['COMMAND'] == 'DIE':
+                    cleanup()
+                    print("Caught SIGTERM from client.\nDieing...")
+                    sys.exit(0)
+                
+                else:
+                    print("WARNING: Malformed packet received from client. \
+                            Ignoring.")
+                    
+
+            statusbar = statusbar_str()
+            os.system("xsetroot -name '%s'" % statusbar)
+            time.sleep(0.5)
+
+        cleanup()
