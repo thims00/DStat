@@ -61,6 +61,22 @@ die = False
 status_msg_bool = False
 
 
+def cat_pid(pid_file):
+    """ cat_pid(pid_file)
+
+    Cat the PID from the specific PID file
+
+    Return: PID upon success, False upon all else.
+    """
+    try:
+        fd = os.open(pid_file, 0)
+        pid = int(os.read(fd, 1024))
+        os.close(fd)
+        return pid
+    except:
+        return False
+
+    
 def cleanup():
     try:
         os.stat(run_file)
@@ -94,6 +110,21 @@ def cpu_avg(cpu_loads):
 
     avg = sum / len(cpu_loads)
     return avg
+
+
+def touch_pid(pid_loca):
+    """ touch_pid(pid_loca)
+
+    Touch the PID file.
+
+    Return: True upon success, False upon any failure.
+    """
+    pid = os.getpid()
+    fd = os.open(pid_loca, os.O_RDWR | os.O_CREAT)
+    os.write(fd, "%d\n" % pid)
+    os.close(fd)
+
+    return True
 
 
 def get_volume():
@@ -264,21 +295,23 @@ def setup(sock_file, server_bool=True):
             
         except OSError as err: # run_file creation and errors
             if err.errno == 2: # File doesn't exist
-                pid = os.getpid()
-                fd = os.open(run_file, os.O_CREAT | os.O_RDWR)
-                os.write(fd, "%d\n" % pid)
-                os.close(fd)
-                
+                touch_pid(run_file)
+
             else:
                 print("OSError: [Errno %d] %s: %s" % \
                         (err.errno, err.strerror, run_file)) 
                 sys.exit(1)
     
         else: # run_file exists
-            print("ERROR: Instance of %s is already running." % basename)
-            print("  Was it closed cleanly?")
-            print("  See: \"ps aux | grep  %s.py\" Also: %s" % (basename, run_file))
-            sys.exit(1)
+            pid = cat_pid(run_file)
+            if pid and psutil.pid_exists(cat_pid(run_file)):
+                print("ERROR: Instance of %s is already running." % basename)
+                print("  Was it closed cleanly?")
+                print("  See: \"ps aux | grep  %s.py\" Also: %s" % (basename, run_file))
+                sys.exit(1)
+            else:
+                os.unlink(run_file)
+                touch_pid(run_file)
 
 
     # Ensure our FIFO file exists
@@ -310,7 +343,7 @@ def setup(sock_file, server_bool=True):
         sys.exit(1)
 
     return fifo
-                                                
+
 
 def sleep_enabled():
     # Ensure that sleepd has a ctl file

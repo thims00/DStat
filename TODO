@@ -15,7 +15,4 @@
 - Standardize some of the weird/uncertain/scattered data validation into a single function.
 - replace the call to system() when setting the statusbar info. Xlib will work and is capable, 
   but will be an endeavor to figure out.
-
-
-
-- Add code to setup() to test for an active PID of PID in PID file.
+- Add client side code to detect the daemon not running and error out appropriately.
