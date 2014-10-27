@@ -161,6 +161,35 @@ def get_volume():
     return output
 
 
+def get_byte(fd):
+    """ get_byte(fd)
+
+    A function to receive a "byte" from the listening port, process it, and 
+    return the received data.
+
+    @arg object fd - A file descriptor to use for obtaining the information.
+
+    Return: Upon success, a dictionary of the data as expressed below:
+        dict = {'COMMAND' : value, 'DELAY' : value, 'DATA' : value}
+
+        Otherwise, False.
+    """
+    try:
+        encd_data = os.read(fd, 1024)
+    except OSError as err:
+        print("WARNING: [Errno %d] %s" % (err.errno, err.strerror))
+        return False
+   
+    data = base64.b64decode(encd_data)
+
+    expl = data.split(':')
+    data = {'COMMAND' : expl[0], 
+            'DELAY'   : expl[1],
+            'DATA'    : expl[2]}
+    print(data)
+    return data
+
+
 def help(msg=None):
     ret = 0
 
@@ -177,61 +206,6 @@ def help(msg=None):
     -i,--idle=NUM        - Define how long the specified message should idle before disappearing."""
     
     sys.exit(ret)
-
-
-def get_byte(fd):
-    """ get_byte(fd)
-
-    A function to receive a "byte" from the listening port, process it, and 
-    return the received data.
-
-    @arg object fd - A file descriptor to use for obtaining the information.
-
-    Return: Upon success, a dictionary of the data as expressed below:
-        dict = {'COMMAND' : value, 'DELAY' : value, 'DATA' : value}
-
-        Otherwise, False.
-    """
-    try:
-        encdd_data = os.read(fd, 1024)
-    except OSError as err:
-        print("WARNING: [Errno %d] %s" % (err.errno, err.strerror))
-        return False
-    
-    try:
-        data = base64.b16decode(encdd_data)
-    except TypeError as err:
-        print("WARNING: [Errno %d] %s" % (err.errno, err.strerror))
-        return False
-
-    expl = data.split(':')
-    data = {'COMMAND' : expl[0], 
-            'DELAY'   : expl[1],
-            'DATA'    : expl[2]}
-
-    return data
-
-
-def send_byte(fd, data):
-    """ send_byte(fd, data)
-
-    Send data specified in "data" to file pointed to by fd. The variable "data"
-    should be a tuple indexed by the protocol defined in the header 
-    documentation. This function will include the base 16 encoding before 
-    sending the data.
-
-    Return: True upon success, false upon failure.
-    """
-    str = "%s:%s:%s" % (data['COMMAND'], data['DELAY'], data['DATA'])
-    encdd_str = base64.b16encode(str)
-    
-    try:
-        os.send(fd, encdd_str)
-    except OSError as err:
-        print("ERROR: [Errno %d] %s" % (err.errno, err.strerror))
-        return False
-
-    return True
 
 
 def mk_prog_bar(perc_val):
@@ -273,6 +247,28 @@ def poll_fifo(fd):
             return False
         else:
             return data
+
+
+def send_byte(fd, data):
+    """ send_byte(fd, data)
+
+    Send data specified in "data" to file pointed to by fd. The variable "data"
+    should be a tuple indexed by the protocol defined in the header 
+    documentation. This function will include the base 16 encoding before 
+    sending the data.
+
+    Return: True upon success, false upon failure.
+    """
+    str = "%s:%s:%s" % (data['COMMAND'], data['DELAY'], data['DATA'])
+    encdd_str = base64.b64encode(str)
+    
+    try:
+        os.send(fd, encdd_str)
+    except OSError as err:
+        print("ERROR: [Errno %d] %s" % (err.errno, err.strerror))
+        return False
+
+    return True
 
 
 def setup(sock_file, server_bool=True):
@@ -444,7 +440,7 @@ if __name__ == "__main__":
             rlist, wlist, xlist = select.select([sock], [], [], 0.1)
             
             if rlist:
-                pkt = get_data(rlist[0])
+                pkt = get_byte(rlist[0])
 
                 # Process our command received
                 if pkt['COMMAND'] == 'MSG':
@@ -456,7 +452,7 @@ if __name__ == "__main__":
                         msg_ghost_time = pkt['DELAY']
         
                     os.system("xsetroot -name '%s'" % pkt['DATA'])
-                    time.sleep(msg_ghost_time)
+                    time.sleep(float(msg_ghost_time))
                     continue
 
                 elif pkt['COMMAND'] == 'DIE':
