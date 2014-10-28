@@ -181,7 +181,8 @@ def help(msg=None):
     -n,--no-color        - Do not include ANSI colors with the output.
     -s,--stdout          - Print the bars to stdout and exit.
     -m,--message=STRING  - Print a message in the status bar for N seconds. (Defaults to 4 Seconds)
-    -i,--idle=NUM        - Define how long the specified message should idle before disappearing."""
+    -i,--idle=NUM        - Define how long the specified message should idle before disappearing.
+    -d,--die             - Send a sigterm to the server."""
     
     sys.exit(ret)
 
@@ -415,7 +416,7 @@ def touch_pid(pid_loca):
 if __name__ == "__main__":
     # Process our command line arguments
     try:
-        args, argv = getopt.getopt(sys.argv[1:], "hnsm:id:", \
+        args, argv = getopt.getopt(sys.argv[1:], "hnsm:i:d", \
                                     ["help", "no-color",    \
                                     "stdout", "message=",   \
                                     "idle=", "die"])
@@ -462,7 +463,7 @@ if __name__ == "__main__":
                 byte = {'COMMAND' : 'DIE',
                         'DELAY'   : 'NULL',
                         'MSG'     : 'NULL'}
-                send_byt(byte['COMMAND'], byte['DELAY'], byte['MSG'])
+                send_byte(sock, byte)
                 print("Sent DIE signal to server.")
                 sys.exit(0)
 
@@ -498,7 +499,7 @@ if __name__ == "__main__":
                 if pkt['COMMAND'] == 'MSG':
                     try:
                        int(pkt['DELAY'])
-                    except:
+                    except ValueError:
                         None
                     else:
                         msg_ghost_time = pkt['DELAY']
