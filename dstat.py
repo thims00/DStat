@@ -39,6 +39,7 @@ vol_perc = True
 snd_dev_ident = 'Headphone'
 
 ## Defaults
+update_clk = 0.5
 msg_ghost_time = 6
 stdout = False
 update_invl = 1
@@ -60,24 +61,14 @@ client = False
 die = False
 status_msg_bool = False
 
-
-def cat_pid(pid_file):
-    """ cat_pid(pid_file)
-
-    Cat the PID from the specific PID file
-
-    Return: PID upon success, False upon all else.
-    """
-    try:
-        fd = os.open(pid_file, 0)
-        pid = int(os.read(fd, 1024))
-        os.close(fd)
-        return pid
-    except:
-        return False
-
-    
+   
 def cleanup():
+    """ cleanup()
+
+    Clean up the running environment, sweep the floor, and return.
+
+    Return: True upon success.
+    """
     try:
         os.stat(run_file)
     except OSError as err:
@@ -100,6 +91,8 @@ def cleanup():
     else:
         os.unlink(sock_file)
 
+    return True
+
 
 def cpu_avg(cpu_loads):
     sum = 0
@@ -110,21 +103,6 @@ def cpu_avg(cpu_loads):
 
     avg = sum / len(cpu_loads)
     return avg
-
-
-def touch_pid(pid_loca):
-    """ touch_pid(pid_loca)
-
-    Touch the PID file.
-
-    Return: True upon success, False upon any failure.
-    """
-    pid = os.getpid()
-    fd = os.open(pid_loca, os.O_RDWR | os.O_CREAT)
-    os.write(fd, "%d\n" % pid)
-    os.close(fd)
-
-    return True
 
 
 def get_volume():
@@ -186,7 +164,7 @@ def get_byte(fd):
     data = {'COMMAND' : expl[0], 
             'DELAY'   : expl[1],
             'DATA'    : expl[2]}
-    print(data)
+    
     return data
 
 
@@ -208,6 +186,31 @@ def help(msg=None):
     sys.exit(ret)
 
 
+def is_running(pid_file):
+    """ is_running(pid_file)
+
+    Check if the process under the PID found in pid_file is running.
+
+    Return: PID upon success, False upon all else.
+    """
+    try:
+        fd = os.open(pid_file, 0)
+        pid = int(os.read(fd, 1024))
+        os.close(fd)
+    except OSError as err:
+        if err.errno == 2:
+            return False
+        else:
+            print("ERROR: [errno %d] %s" % (err.errno, err.strerror))
+            cleanup()
+            sys.exit(1)
+    else:
+        if psutil.pid_exists(pid):
+            return True
+        else:
+            return False
+        
+ 
 def mk_prog_bar(perc_val):
     bar_str = ""
     delim = 100.0 / bar_width
@@ -257,13 +260,21 @@ def send_byte(fd, data):
     documentation. This function will include the base 16 encoding before 
     sending the data.
 
+    Arguments: @arg fd  fd   - A valid file descriptor for an open file.
+               @arg str data - The data to be sent to the server in a dictionary 
+                               in the following structure.
+                               Dict = {'COMMAND' : 'CMDDATA',
+                                       'DELAY'   : 10,
+                                       'MSG'     : 'Hello World'}
+
     Return: True upon success, false upon failure.
     """
-    str = "%s:%s:%s" % (data['COMMAND'], data['DELAY'], data['DATA'])
-    encdd_str = base64.b64encode(str)
-    
+    tmp = "%s:%s:%s" % (str(data['COMMAND']), str(data['DELAY']), 
+                        str(data['MSG']))
+    encd_str = base64.b64encode(tmp)
+
     try:
-        os.send(fd, encdd_str)
+        os.write(fd, encd_str)
     except OSError as err:
         print("ERROR: [Errno %d] %s" % (err.errno, err.strerror))
         return False
@@ -299,17 +310,22 @@ def setup(sock_file, server_bool=True):
                 sys.exit(1)
     
         else: # run_file exists
-            pid = cat_pid(run_file)
-            if pid and psutil.pid_exists(cat_pid(run_file)):
+            if is_running(run_file):
                 print("ERROR: Instance of %s is already running." % basename)
                 print("  Was it closed cleanly?")
-                print("  See: \"ps aux | grep  %s.py\" Also: %s" % (basename, run_file))
+                print("  See: \"ps aux | grep  %s.py\" Also: %s" % (basename, 
+                            run_file))
                 sys.exit(1)
             else:
                 os.unlink(run_file)
                 touch_pid(run_file)
 
 
+    # If client environment, ensure server is running and fifo exists
+    if not server_bool and not is_running(run_file):
+            print("Server is not running. Try starting it...")
+            sys.exit(1)
+    
     # Ensure our FIFO file exists
     try:
         ss = os.stat(sock_file)
@@ -378,6 +394,21 @@ def statusbar_str():
     return sbar_str
 
 
+def touch_pid(pid_loca):
+    """ touch_pid(pid_loca)
+
+    Touch the PID file and add concatenate our PID into it.
+
+    Return: True upon success, False upon any failure.
+    """
+    pid = os.getpid()
+    fd = os.open(pid_loca, os.O_RDWR | os.O_CREAT)
+    os.write(fd, "%d\n" % pid)
+    os.close(fd)
+
+    return True
+
+
 
 
 # Main loop
@@ -423,10 +454,31 @@ if __name__ == "__main__":
             help()
 
 
-    ## main loop
     # Handle the client requests
     if client:
         sock = setup(sock_file, False)
+        if sock:
+            if die:
+                byte = {'COMMAND' : 'DIE',
+                        'DELAY'   : 'NULL',
+                        'MSG'     : 'NULL'}
+                send_byt(byte['COMMAND'], byte['DELAY'], byte['MSG'])
+                print("Sent DIE signal to server.")
+                sys.exit(0)
+
+            elif status_msg:
+                byte = {'COMMAND' : 'MSG',
+                        'DELAY'   : msg_ghost_time,
+                        'MSG'     : status_msg}
+                    
+                if not send_byte(sock, byte):
+                    print("ERROR: Could not contact the server. Is it running?")
+
+        else:
+            print("ERROR: Server is not running. Start the server and try again.")
+            cleanup()
+            sys.exit(1)
+
 
     # Main server loop
     else:
@@ -467,6 +519,6 @@ if __name__ == "__main__":
 
             statusbar = statusbar_str()
             os.system("xsetroot -name '%s'" % statusbar)
-            time.sleep(0.5)
+            time.sleep(update_clk)
 
         cleanup()
