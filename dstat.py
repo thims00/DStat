@@ -91,6 +91,7 @@ def cleanup():
     else:
         os.unlink(sock_file)
 
+    xsetroot("")
     return True
 
 
@@ -103,6 +104,35 @@ def cpu_avg(cpu_loads):
 
     avg = sum / len(cpu_loads)
     return avg
+
+
+def get_byte(fd):
+    """ get_byte(fd)
+
+    A function to receive a "byte" from the listening port, process it, and 
+    return the received data.
+
+    @arg object fd - A file descriptor to use for obtaining the information.
+
+    Return: Upon success, a dictionary of the data as expressed below:
+        dict = {'COMMAND' : value, 'DELAY' : value, 'DATA' : value}
+
+        Otherwise, False.
+    """
+    try:
+        encd_data = os.read(fd, 1024)
+    except OSError as err:
+        print("WARNING: [Errno %d] %s" % (err.errno, err.strerror))
+        return False
+   
+    data = base64.b64decode(encd_data)
+
+    expl = data.split(':')
+    data = {'COMMAND' : expl[0], 
+            'DELAY'   : expl[1],
+            'DATA'    : expl[2]}
+    
+    return data
 
 
 def get_volume():
@@ -137,35 +167,6 @@ def get_volume():
         output = "Muted"
 
     return output
-
-
-def get_byte(fd):
-    """ get_byte(fd)
-
-    A function to receive a "byte" from the listening port, process it, and 
-    return the received data.
-
-    @arg object fd - A file descriptor to use for obtaining the information.
-
-    Return: Upon success, a dictionary of the data as expressed below:
-        dict = {'COMMAND' : value, 'DELAY' : value, 'DATA' : value}
-
-        Otherwise, False.
-    """
-    try:
-        encd_data = os.read(fd, 1024)
-    except OSError as err:
-        print("WARNING: [Errno %d] %s" % (err.errno, err.strerror))
-        return False
-   
-    data = base64.b64decode(encd_data)
-
-    expl = data.split(':')
-    data = {'COMMAND' : expl[0], 
-            'DELAY'   : expl[1],
-            'DATA'    : expl[2]}
-    
-    return data
 
 
 def help(msg=None):
@@ -410,6 +411,19 @@ def touch_pid(pid_loca):
     return True
 
 
+def xsetroot(text):
+    """ xsetroot(text)
+
+    Set the title of the root window and return true.
+
+    Arguments: @arg str text - The text to set as the root window's title.
+
+    Return: True
+    """
+    os.system("xsetroot -name '%s'" % text)
+    return True
+
+
 
 
 # Main loop
@@ -519,7 +533,7 @@ if __name__ == "__main__":
                     
 
             statusbar = statusbar_str()
-            os.system("xsetroot -name '%s'" % statusbar)
+            xsetroot(statusbar)
             time.sleep(update_clk)
 
         cleanup()
