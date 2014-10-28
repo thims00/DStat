@@ -5,6 +5,7 @@
 # Ver: 0.4
 # Author: Tomm Smith (root DOT packet AT gmail DOT come)
 # Date: 7/20/2014
+# Notes: In Jesus' name are you healed.
 ########################################################
 #
 # IPC Protocol Definition And Notes
