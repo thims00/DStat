@@ -53,6 +53,7 @@ if bname[0] == '.' and bname[1] == '/':
 else:
     basename = bname[0:-3]
 
+# Control files
 sleepd_ctl_file='/var/run/sleepd.ctl'
 run_file='/tmp/%s.pid' % basename
 sock_file='/tmp/%s' % basename
@@ -231,28 +232,42 @@ def mk_prog_bar(perc_val):
     return bar_str
 
 
-def poll_fifo(fd):
-    """ poll_fifo(fd)
+def read(r_file, svrty_lvl=None, bytes=1024):
+    """ read(file, svrty_lvl=None, bytes=1024)
 
-    Poll our FIFO descriptor for information and deal with the action 
-    appropriately. 
+    Read file and return the data or return false and raise appropriate error 
+    based upon the level of svrty_lvl.
 
-    Arguments:
+    Arguments: @arg str file      - The file to read
+               @arg str svrty_lvl - The level of severity if an issue is raised. 
+                                    One of:
+                                        None  - Do nothing and return False
+                                        Warn  - Raise error to stdout and return
+                                                False
+                                        Error - Raise error and die
+               @arg int bytes     - Amount of bytes to read in. Default: 1024
 
-    Return: Data string upon success, False upon failure.
+    Return: String of data upon success, False and exception "raised" upon failure.
     """
+    err_msg = "No Error"
     try:
-        data = os.read(fd, 1024)
-
+        fd = os.open(r_file, os.R_OK)
+        data = os.read(fd, bytes)
+        os.close(fd)
     except OSError as err:
-        print("OSError: [%d]: %s" % (err.errno, err.strerror))
-        return False
-
-    else:
-        if len(data) == 0:
+        err_msg = "[Errno %d] %s" % (err.errno, err.strerror)
+        
+        if svrty_lvl.lower() == 'error':
+            print("ERROR: %s: %s" % (err_msg, r_file))
+            cleanup()
+            sys.exit(1)
+        elif svrty_lvl.lower() == 'warn':
+            print("WARNING: %s: %s" % (err_msg, r_file))
             return False
         else:
-            return data
+            return False
+    else:
+        return data
 
 
 def send_byte(fd, data):
@@ -361,18 +376,37 @@ def setup(sock_file, server_bool=True):
 
 
 def sleep_enabled():
+    """ sleep_enabled()
+
+    Check whether or not sleepd is running and return the state.
+
+    Arguments: None
+
+    Return: True upon sleep being enabled, 
+            False upon disabled,
+            and None, warning/error raised upon other situation.
+    TODO:
+        - Should this function have numeric return status to allow for the parent
+          control loop to deal with error handling?
+    """
     # Ensure that sleepd has a ctl file
     try:
         os.stat(sleepd_ctl_file)
-    except OSError:
-        print("ERROR: Sleepd does not exist. Is sleepd installed?\nNOTICE: \
-                Sleepd support disabled.")
-
-    sleepd_fd = open(sleep_ctl_file, 4)
-    if data[0:1] == 1:
-        return False
-    else :
-        return True
+    except OSError as err:
+        if err.errno == 2:
+            print("WARNING: Sleepd status file %s does not exist. Is sleepd \
+                    installed?\n Sleepd support disabled.", sleepd_ctl_file)
+            return False
+        else:
+            print("ERROR: [errno %d] %s" % (err.errno, err.strerror))
+            return False
+    else:
+        fd = os.open(sleepd_ctl_file, os.R_OK)
+        val = os.read(fd, 1024)
+        if int(val) == 1:
+            return False
+        else :
+            return True
 
 
 def statusbar_str():
@@ -382,15 +416,28 @@ def statusbar_str():
 
     Return: A formatted str of the statusbar information 
     """
+    sbar_str = ""
+
+    ret = sleep_enabled()
+    if ret:
+        sbar_str = "Sleep: Enabled "
+    elif not ret:
+        sbar_str = "Sleep: Disabled "
+    # Warnings are raised from within, simply ignore the situation.
+    else:
+        sbar_str = ""
+
+    # Volume status / information
+    volume = get_volume()
+    
+    # CPU and memory information and bar
     cpu_perc = round(cpu_avg(psutil.cpu_percent(None, True)), 1)
     mem_perc = psutil.phymem_usage()[3]
     
     cpu_bar = mk_prog_bar(cpu_perc)
     mem_bar = mk_prog_bar(mem_perc)
     
-    volume = get_volume()
-    
-    sbar_str = "Volume: " + str(volume) + " "
+    sbar_str += "Volume: " + str(volume) + " "
     sbar_str += "CPU " + str(cpu_perc) + cpu_bar + " "
     sbar_str += "MEM " + str(mem_perc) + mem_bar
   

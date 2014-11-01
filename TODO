@@ -1,10 +1,6 @@
-- Add a feature to display if sleep is on. Support began 10/20/2014.
 - A function to display lock status, only when active.
 - bitmap support (dependant upon support of the WM).
 - Incorporate better return status for help()
-- Add code to ensure only one "daemon" is running at any given time.
-- Add code to force cleanup of the environment for stale /var/run/ files.
-- Incorporate better error handling.
 - Clean up setup() and possibly rearrange.
   \- Specifically fix the try-except issue of a file not existing, but the
   directory doesn't have write permissions. Do so for both try-excepts.
@@ -12,7 +8,6 @@
 - Setup the ability to pass message back and forth between the client and
   server.
 - Incorporate flat file logging to system messages.
-- Standardize some of the weird/uncertain/scattered data validation into a single function.
 - replace the call to system() when setting the statusbar info. Xlib will work and is capable, 
   but will be an endeavor to figure out.
-- Add client side code to detect the daemon not running and error out appropriately.
+- Implement code to test whether or not sleepd is installed, and use it appropriately. 
