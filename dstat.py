@@ -420,9 +420,9 @@ def statusbar_str():
 
     ret = sleep_enabled()
     if ret:
-        sbar_str = "Sleep: Enabled "
+        sbar_str = "Sleep: Enabled | "
     elif not ret:
-        sbar_str = "Sleep: Disabled "
+        sbar_str = "Sleep: Disabled | "
     # Warnings are raised from within, simply ignore the situation.
     else:
         sbar_str = ""
@@ -437,7 +437,7 @@ def statusbar_str():
     cpu_bar = mk_prog_bar(cpu_perc)
     mem_bar = mk_prog_bar(mem_perc)
     
-    sbar_str += "Volume: " + str(volume) + " "
+    sbar_str += "Volume: " + str(volume) + " | "
     sbar_str += "CPU " + str(cpu_perc) + cpu_bar + " "
     sbar_str += "MEM " + str(mem_perc) + mem_bar
   
