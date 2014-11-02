@@ -12,3 +12,4 @@
   but will be an endeavor to figure out.
 - Implement code to test whether or not sleepd is installed, and use it appropriately. 
 - Make the output of statusbar_str() be a fixed width up to 4 digits (3 decimal points left of decimal, one right of).
+- Test and incorporate read() into all file read sections.
