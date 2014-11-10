@@ -45,6 +45,8 @@ msg_ghost_time = 6
 stdout = False
 update_invl = 1
 bar_width = 12
+# Military time?
+time_frmt = True
 
 # Strip ./, and .py from our basename
 bname = sys.argv[0]
@@ -190,7 +192,7 @@ def help(msg=None):
         print
 
     print(sys.argv[0] + " [OPTION] [data] - A simple statusbar generator for dwm.")
-    print("""    -h,--help        - Print help and exit.
+    print("""    -h,--help            - Print help and exit.
     -n,--no-color        - Do not include ANSI colors with the output.
     -s,--stdout          - Print the bars to stdout and exit.
     -m,--message=STRING  - Print a message in the status bar for N seconds. (Defaults to 4 Seconds)
@@ -451,6 +453,8 @@ def statusbar_str():
     sbar_str += "Volume: %s | " % str_padding(volume, 4)
     sbar_str += "CPU %s%s" % (str_padding(cpu_perc, 4), cpu_bar)
     sbar_str += "MEM %s%s" % (str_padding(mem_perc, 4), mem_bar)
+
+    sbar_str += " | %s" % time_str(time_frmt)
   
     return sbar_str
 
@@ -476,6 +480,41 @@ def str_padding(data, width):
 
         return data
 
+
+def time_str(mltry=True):
+    """ time_str(mltry)
+
+    Return the current time in the style defined by mltry.
+    Defaults to military time.
+
+    Arguments: @arg bool mltry - True for military time, False for civillian.
+
+    Return: String of current time upon success.
+    """
+    months = { 1 : 'JAN',
+               2 : 'FEB',
+               3 : 'MAR',
+               4 : 'APR',
+               5 : 'MAY',
+               6 : 'JUN',
+               7 : 'JUL',
+               8 : 'AUG',
+               9 : 'SEP',
+              10 : 'OCT',
+              11 : 'NOV',
+              12 : 'DEC'}
+    t = time.localtime()
+
+    if mltry:
+        time_str = "%d:%d:%d %d %s %d" % (t.tm_hour, t.tm_min, t.tm_sec,
+                        t.tm_mday, months[t.tm_mon], t.tm_year)
+    else:
+        hour = t.tm_hour - 12
+        time_str = "%d:%d:%d %d/%d/%d" % (hour, t.tm_min, t.tm_sec,
+                        t.tm_mon, t.tm_mday, t.tm_year)
+
+    return time_str
+    
 
 def touch_pid(pid_loca):
     """ touch_pid(pid_loca)
