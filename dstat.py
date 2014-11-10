@@ -40,7 +40,7 @@ vol_perc = True
 snd_dev_ident = 'Headphone'
 
 ## Defaults
-update_clk = 0.5
+update_clk = 0.2
 msg_ghost_time = 6
 stdout = False
 update_invl = 1
@@ -62,6 +62,8 @@ sock_file='/tmp/%s' % basename
 client = False
 die = False
 status_msg_bool = False
+
+
 
    
 def cleanup():
@@ -141,14 +143,14 @@ def get_volume():
     try:
         bsh = subprocess.Popen(["amixer", "get", snd_dev_ident], stdout=subprocess.PIPE, shell=False)
     except OSError:
-        print "ERROR: amixer is not installed or not in the search path."
+        print("ERROR: amixer is not installed or not in the search path.")
         return False
 
     output = bsh.communicate()
     
     # Could have False Positives
     if len(output[0]) == 0:
-        print "ERROR: Invalid arguments were passed to amixer."
+        print("ERROR: Invalid arguments were passed to amixer.")
         return False
 
 
@@ -176,16 +178,16 @@ def help(msg=None):
 
     if msg != None:
         ret = 1
-        print msg
+        print(msg)
         print
 
-    print sys.argv[0] + " [OPTION] [data] - A simple statusbar generator for dwm."
-    print """    -h,--help        - Print help and exit.
+    print(sys.argv[0] + " [OPTION] [data] - A simple statusbar generator for dwm.")
+    print("""    -h,--help        - Print help and exit.
     -n,--no-color        - Do not include ANSI colors with the output.
     -s,--stdout          - Print the bars to stdout and exit.
     -m,--message=STRING  - Print a message in the status bar for N seconds. (Defaults to 4 Seconds)
     -i,--idle=NUM        - Define how long the specified message should idle before disappearing.
-    -d,--die             - Send a sigterm to the server."""
+    -d,--die             - Send a sigterm to the server.""")
     
     sys.exit(ret)
 
@@ -403,6 +405,7 @@ def sleep_enabled():
     else:
         fd = os.open(sleepd_ctl_file, os.R_OK)
         val = os.read(fd, 1024)
+        os.close(fd)
         if int(val) == 1:
             return False
         else :
@@ -429,7 +432,7 @@ def statusbar_str():
 
     # Volume status / information
     volume = get_volume()
-    
+
     # CPU and memory information and bar
     cpu_perc = round(cpu_avg(psutil.cpu_percent(None, True)), 1)
     mem_perc = psutil.phymem_usage()[3]
