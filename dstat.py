@@ -140,6 +140,15 @@ def get_byte(fd):
 
 
 def get_volume():
+    """ get_volume()
+        
+    Get the state/value of the volume.
+
+    Arguments: None
+
+    Return: Status/percentage string of current volume value upon success,
+            False upon error.
+    """
     try:
         bsh = subprocess.Popen(["amixer", "get", snd_dev_ident], stdout=subprocess.PIPE, shell=False)
     except OSError:
@@ -152,7 +161,6 @@ def get_volume():
     if len(output[0]) == 0:
         print("ERROR: Invalid arguments were passed to amixer.")
         return False
-
 
     ## Parse our stdout string and retrieve our volume dB and percentage.
     # Split by new line, replace all [,] brackets, splice and return the last Three elements
@@ -170,7 +178,7 @@ def get_volume():
     if vals[2] == 'off':
         output = "Muted"
 
-    return output
+    return str(output)
 
 
 def help(msg=None):
@@ -440,11 +448,33 @@ def statusbar_str():
     cpu_bar = mk_prog_bar(cpu_perc)
     mem_bar = mk_prog_bar(mem_perc)
     
-    sbar_str += "Volume: " + str(volume) + " | "
-    sbar_str += "CPU " + str(cpu_perc) + cpu_bar + " "
-    sbar_str += "MEM " + str(mem_perc) + mem_bar
+    sbar_str += "Volume: %s | " % str_padding(volume, 4)
+    sbar_str += "CPU %s%s" % (str_padding(cpu_perc, 4), cpu_bar)
+    sbar_str += "MEM %s%s" % (str_padding(mem_perc, 4), mem_bar)
   
     return sbar_str
+
+
+def str_padding(data, width):
+    """ str_padding(data, width)
+
+    Pad the provided string with whitespace to ensure it fills the define 
+    width of "width".
+
+    Arguments: @arg str data   - The string to be padded.
+               @arg int width  - The width to ensure the str is padded to.
+
+    Return: The appropriate padded string upon success, False otherwise.
+    """
+    data = str(data)
+    if len(data) >= width:
+        return data
+    else:
+        stps = width - len(data)
+        for i in range(stps):
+            data += " "
+
+        return data
 
 
 def touch_pid(pid_loca):
