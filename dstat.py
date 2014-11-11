@@ -53,9 +53,10 @@ basename = sys.argv[0].split('/')[-1][0:-3]
 
 
 # Control files
-sleepd_ctl_file='/var/run/sleepd.ctl'
 run_file='/tmp/%s.pid' % basename
 sock_file='/tmp/%s' % basename
+sleepd_ctl_file='/var/run/sleepd.ctl'
+xtrlock_pid='/tmp/xtrlock.pid'
 
 # Internal control
 client = False
@@ -428,14 +429,19 @@ def statusbar_str():
     """
     sbar_str = ""
 
+    # Show Locked Indiciator
+    if is_running(xtrlock_pid):
+        sbar_str += "[Locked] | "
+
+    # Deal with sleepd
     ret = sleep_enabled()
     if ret:
-        sbar_str = "Sleep: Enabled | "
+        sbar_str += "Sleep: Enabled | "
     elif not ret:
-        sbar_str = "Sleep: Disabled | "
+        sbar_str += "Sleep: Disabled | "
     # Warnings are raised from within, simply ignore the situation.
     else:
-        sbar_str = ""
+        sbar_str += ""
 
     # Volume status / information
     volume = get_volume()
@@ -443,7 +449,7 @@ def statusbar_str():
     # CPU and memory information and bar
     cpu_perc = round(cpu_avg(psutil.cpu_percent(None, True)), 1)
     mem_perc = psutil.phymem_usage()[3]
-    
+
     cpu_bar = mk_prog_bar(cpu_perc)
     mem_bar = mk_prog_bar(mem_perc)
     
@@ -516,7 +522,7 @@ def time_str(mltry=True):
 def touch_pid(pid_loca):
     """ touch_pid(pid_loca)
 
-    Touch the PID file and add concatenate our PID into it.
+    Touch the PID file and concatenate our PID into it.
 
     Return: True upon success, False upon any failure.
     """
