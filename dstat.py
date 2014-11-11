@@ -2,7 +2,7 @@
 
 ########################################################
 # Dstat - A simple statusbar for dwm.
-# Ver: 0.4
+# Ver: 0.7
 # Author: Tomm Smith (root DOT packet AT gmail DOT come)
 # Date: 7/20/2014
 # Notes: In Jesus' name are you healed.
@@ -50,7 +50,6 @@ time_frmt = True
 
 # Strip /path/info/, and .py from our basename
 basename = sys.argv[0].split('/')[-1][0:-3]
-
 
 # Control files
 run_file='/tmp/%s.pid' % basename
@@ -437,11 +436,8 @@ def statusbar_str():
     ret = sleep_enabled()
     if ret:
         sbar_str += "Sleep: Enabled | "
-    elif not ret:
-        sbar_str += "Sleep: Disabled | "
-    # Warnings are raised from within, simply ignore the situation.
     else:
-        sbar_str += ""
+        sbar_str += "Sleep: Disabled | "
 
     # Volume status / information
     volume = get_volume()
