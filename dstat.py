@@ -48,12 +48,9 @@ bar_width = 12
 # Military time?
 time_frmt = True
 
-# Strip ./, and .py from our basename
-bname = sys.argv[0]
-if bname[0] == '.' and bname[1] == '/':
-    basename = bname[2:-3]
-else:
-    basename = bname[0:-3]
+# Strip /path/info/, and .py from our basename
+basename = sys.argv[0].split('/')[-1][0:-3]
+
 
 # Control files
 sleepd_ctl_file='/var/run/sleepd.ctl'
