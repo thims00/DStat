@@ -40,9 +40,9 @@ dstat="/home/user/.bin/dstat.py"
 if [ ! -e "$run_file" ] ;then
   touch "$run_file"
   $dstat -m "Computer Locked"
-
+  
   if [ $? -gt 0 ] ;then
-    $dstat -m "ERROR: Could not create run file $run_file"
+    $dstat -m "ERROR: $0 could not create run file $run_file"
   fi
 
 elif [ -w "$run_file" ] ;then
