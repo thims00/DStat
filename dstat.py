@@ -41,9 +41,8 @@ snd_dev_ident = 'Headphone'
 
 ## Defaults
 update_clk = 0.7
-msg_ghost_time = 6
-stdout = False
-update_invl = 1
+# Default time to display a message
+msg_ghost_time = 5
 bar_width = 12
 # Military time?
 time_frmt = True
@@ -59,6 +58,7 @@ xtrlock_pid='/tmp/xtrlock.pid'
 
 # Internal control
 client = False
+stdout = False
 die = False
 status_msg_bool = False
 
