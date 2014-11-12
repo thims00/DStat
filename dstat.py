@@ -126,8 +126,11 @@ def get_byte(fd):
     except OSError as err:
         print("WARNING: [Errno %d] %s" % (err.errno, err.strerror))
         return False
-   
-    data = base64.b64decode(encd_data)
+  
+    try:
+        data = base64.b64decode(encd_data)
+    except TypeError:
+        return False
 
     expl = data.split(':')
     data = {'COMMAND' : expl[0], 
@@ -626,7 +629,11 @@ if __name__ == "__main__":
             
             if rlist:
                 pkt = get_byte(rlist[0])
-
+                
+                if not pkt:
+                    print("WARNING: There was an issue receiving the packet from the client. Ignored.")
+                    continue
+                   
                 # Process our command received
                 if pkt['COMMAND'] == 'MSG':
                     try:
@@ -646,8 +653,7 @@ if __name__ == "__main__":
                     sys.exit(0)
                 
                 else:
-                    print("WARNING: Malformed packet received from client. \
-                            Ignoring.")
+                    print("WARNING: Malformed packet received from client. Ignoring.")
                     
 
             statusbar = statusbar_str()
