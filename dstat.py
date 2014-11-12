@@ -35,11 +35,10 @@ import subprocess
 import select
 
 
+## Defaults ##
 # Volume Info Display (Percentage or dB)
 vol_perc = True
 snd_dev_ident = 'Headphone'
-
-## Defaults
 update_clk = 0.7
 # Default time to display a message
 msg_ghost_time = 5
@@ -47,16 +46,16 @@ bar_width = 12
 # Military time?
 time_frmt = True
 
+## Control Files ##
 # Strip /path/info/, and .py from our basename
 basename = sys.argv[0].split('/')[-1][0:-3]
 
-# Control files
 run_file='/tmp/%s.pid' % basename
 sock_file='/tmp/%s' % basename
 sleepd_ctl_file='/var/run/sleepd.ctl'
 xtrlock_pid='/tmp/xtrlock.pid'
 
-# Internal control
+## Internal control ##
 client = False
 stdout = False
 die = False
@@ -64,7 +63,7 @@ status_msg_bool = False
 
 
 
-   
+
 def cleanup():
     """ cleanup()
 
@@ -623,7 +622,7 @@ if __name__ == "__main__":
         xlist = []
 
         while True: 
-            rlist, wlist, xlist = select.select([sock], [], [], 0.1)
+            rlist, wlist, xlist = select.select([sock], [], [], 0)
             
             if rlist:
                 pkt = get_byte(rlist[0])
