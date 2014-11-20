@@ -132,6 +132,7 @@ def get_byte(fd):
     except TypeError:
         return False
 
+    # Error handling here!
     expl = data.split(':')
     data = {'COMMAND' : expl[0], 
             'DELAY'   : expl[1],
@@ -210,7 +211,8 @@ def is_running(pid_file):
     """
     try:
         fd = os.open(pid_file, 0)
-        pid = int(os.read(fd, 1024))
+        buf = os.read(fd, 1024)
+        pid = int(buf.strip("\n"))
         os.close(fd)
     except OSError as err:
         if err.errno == 2:
