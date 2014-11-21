@@ -112,7 +112,7 @@ def get_byte(fd):
     """ get_byte(fd)
 
     A function to receive a "byte" from the listening port, process it, and 
-    return the received data.
+    return the received data. Base 64 decoding is done within.
 
     @arg object fd - A file descriptor to use for obtaining the information.
 
@@ -288,7 +288,7 @@ def send_byte(fd, data):
 
     Send data specified in "data" to file pointed to by fd. The variable "data"
     should be a tuple indexed by the protocol defined in the header 
-    documentation. This function will include the base 16 encoding before 
+    documentation. This function will include the base 64 encoding before 
     sending the data.
 
     Arguments: @arg fd  fd   - A valid file descriptor for an open file.
@@ -465,7 +465,7 @@ def statusbar_str():
 def str_padding(data, width):
     """ str_padding(data, width)
 
-    Pad the provided string with whitespace to ensure it fills the define 
+    Pad the provided string with whitespace to ensure it fills the defined
     width of "width".
 
     Arguments: @arg str data   - The string to be padded.
