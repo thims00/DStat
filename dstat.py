@@ -133,10 +133,13 @@ def get_byte(fd):
         return False
 
     # Error handling here!
-    expl = data.split(':')
-    data = {'COMMAND' : expl[0], 
-            'DELAY'   : expl[1],
-            'DATA'    : expl[2]}
+    try:
+        expl = data.split(':')
+        data = {'COMMAND' : expl[0], 
+                'DELAY'   : expl[1],
+                'DATA'    : expl[2]}
+    except IndexError:
+        return False
     
     return data
 
