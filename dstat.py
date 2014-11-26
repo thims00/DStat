@@ -214,6 +214,7 @@ def is_running(pid_file):
     """
     try:
         fd = os.open(pid_file, 0)
+        # BUG: ValueError: invalid literal for int() with base 10: ''
         buf = os.read(fd, 1024)
         pid = int(buf.strip("\n"))
         os.close(fd)
@@ -401,9 +402,6 @@ def sleep_enabled():
     Return: True upon sleep being enabled, 
             False upon disabled,
             and None, warning/error raised upon other situation.
-    TODO:
-        - Should this function have numeric return status to allow for the parent
-          control loop to deal with error handling?
     """
     # Ensure that sleepd has a ctl file
     try:
@@ -412,10 +410,10 @@ def sleep_enabled():
         if err.errno == 2:
             print("WARNING: Sleepd status file %s does not exist. Is sleepd \
                     installed?\n Sleepd support disabled.", sleepd_ctl_file)
-            return False
+            None
         else:
             print("ERROR: [errno %d] %s" % (err.errno, err.strerror))
-            return False
+            sys.exit(1)
     else:
         fd = os.open(sleepd_ctl_file, os.R_OK)
         val = os.read(fd, 1024)
@@ -427,7 +425,7 @@ def sleep_enabled():
 
 
 def statusbar_str():
-    """ bld_stsbar()
+    """ statusbar_str()
 
     The primary function that ties the business logic together.
 
@@ -443,6 +441,8 @@ def statusbar_str():
     ret = sleep_enabled()
     if ret:
         sbar_str += "Sleep: Enabled | "
+    elif ret == None:
+        None
     else:
         sbar_str += "Sleep: Disabled | "
 
@@ -567,9 +567,6 @@ if __name__ == "__main__":
     for arg, data in args:
         if arg in ("-h", "--help"):
             help()
-    
-        elif arg in ("-n", "--no-color"):
-            print("ERROR: No color, or code.")  
     
         elif arg in ("-s", "--stdout"):
             stdout = True

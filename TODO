@@ -1,15 +1,12 @@
-- A function to display lock status, only when active.
-- bitmap support (dependant upon support of the WM).
 - Incorporate better return status for help()
 - Clean up setup() and possibly rearrange.
   \- Specifically fix the try-except issue of a file not existing, but the
   directory doesn't have write permissions. Do so for both try-excepts.
-- Move the /var/run files into a single directory in /var/run?
 - Setup the ability to pass message back and forth between the client and
   server.
-- Incorporate flat file logging to system messages.
 - replace the call to system() when setting the statusbar info. Xlib will work and is capable, 
   but will be an endeavor to figure out.
-- Implement code to test whether or not sleepd is installed, and use it appropriately. 
-- Make the output of statusbar_str() be a fixed width up to 4 digits (3 decimal points left of decimal, one right of).
-    \- This is already incorporated, though still needs some pruning and standardized applications.
+- Immplement the ability to use output with dualstatus dwm patch. More specifically, allow for alignment justification on 
+  the secondary statusbar (left, center, right) and automatically pad it accordingly. User should be able to ultimately 
+  say, "status' = left, music = center, time = right".
+- Immplement music support of mocp
