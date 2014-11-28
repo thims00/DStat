@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python2.7
 
 ########################################################
 # Dstat - A simple statusbar for dwm.
@@ -52,7 +52,7 @@ basename = sys.argv[0].split('/')[-1][0:-3]
 
 run_file='/tmp/%s.pid' % basename
 sock_file='/tmp/%s' % basename
-sleepd_ctl_file='/var/run/sleepd.ctl'
+sleepd_ctl_file='/var/run/sleepd.pid'
 xtrlock_pid='/tmp/xtrlock.pid'
 
 ## Internal control ##
@@ -106,6 +106,12 @@ def cpu_avg(cpu_loads):
 
     avg = sum / len(cpu_loads)
     return avg
+
+
+def get_music(dsply_str=""):
+    """ get_music()
+    """
+    None
 
 
 def get_byte(fd):
@@ -214,10 +220,14 @@ def is_running(pid_file):
     """
     try:
         fd = os.open(pid_file, 0)
-        # BUG: ValueError: invalid literal for int() with base 10: ''
         buf = os.read(fd, 1024)
-        pid = int(buf.strip("\n"))
         os.close(fd)
+        
+        if len(buf) == 0 or buf == '\n':
+            return False
+        else:
+            pid = int(buf.strip("\n"))
+
     except OSError as err:
         if err.errno == 2:
             return False
@@ -530,7 +540,7 @@ def touch_pid(pid_loca):
     Return: True upon success, False upon any failure.
     """
     pid = os.getpid()
-    fd = os.open(pid_loca, os.O_RDWR | os.O_CREAT)
+    fd = os.open(pid_loca, os.O_RDWR | os.O_CREAT | os.O_TRUNC)
     os.write(fd, "%d\n" % pid)
     os.close(fd)
 

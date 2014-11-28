@@ -1,12 +1,17 @@
-- Incorporate better return status for help()
-- Clean up setup() and possibly rearrange.
-  \- Specifically fix the try-except issue of a file not existing, but the
-  directory doesn't have write permissions. Do so for both try-excepts.
-- Setup the ability to pass message back and forth between the client and
-  server.
 - replace the call to system() when setting the statusbar info. Xlib will work and is capable, 
   but will be an endeavor to figure out.
 - Immplement the ability to use output with dualstatus dwm patch. More specifically, allow for alignment justification on 
   the secondary statusbar (left, center, right) and automatically pad it accordingly. User should be able to ultimately 
-  say, "status' = left, music = center, time = right".
+  say, "%sleep %volume %cpu %cpubar %mem %membar ; %c%music%rtime%r<message>
 - Immplement music support of mocp
+
+
+
+
+
+BUGS:
+- Clock seconds are displayed erradically due to the update_clk not being by the second. 
+  A mechanism to allow for dynamic updating of information (EG. static || constant) fields 
+  in the statusbar string. This should achieve the lower memory, yet give a smooth time clock.
+- Fix sleepd bug when dstat first starts. If the system was just booted, sleepd does not create a sleepd.ctl file
+  until the first toggle/run of sleepd hibernation.
