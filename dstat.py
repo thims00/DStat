@@ -52,7 +52,7 @@ basename = sys.argv[0].split('/')[-1][0:-3]
 
 run_file='/tmp/%s.pid' % basename
 sock_file='/tmp/%s' % basename
-sleepd_ctl_file='/var/run/sleepd.pid'
+sleepd_ctl_file='/var/run/sleepd.ctl'
 xtrlock_pid='/tmp/xtrlock.pid'
 
 ## Internal control ##
@@ -452,7 +452,7 @@ def statusbar_str():
     if ret:
         sbar_str += "Sleep: Enabled | "
     elif ret == None:
-        None
+        sbar_str += "Sleep: NA | "
     else:
         sbar_str += "Sleep: Disabled | "
 
